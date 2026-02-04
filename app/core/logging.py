@@ -15,7 +15,7 @@ class ServiceNameFilter(logging.Filterer):
         return True
 
 
-def setup_logging(service_name: str | None = None) -> logging.Logger:
+def setup_logging(service_name: str) -> logging.Logger:
     logging.config.dictConfig(config.LOGGING)
     logger = logging.getLogger(__name__)
     logger.info("Logging Start")
