@@ -2,6 +2,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 import logging
 from pathlib import Path
 
+import yt_dlp
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 ENV_PATH = BASE_DIR / ".env"
 
@@ -17,15 +19,36 @@ class Settings(BaseSettings):
     logs_path: str = str(BASE_DIR / "logs")
     http_proxy: str
     soundcloud_oauth: str
+    concurrent_downloads: int = 4  # 4–16 depending on your bandwidth
+    concurrent_fragment_downloads: int = 1  # 4–16 depending on your bandwidth
+    download_folder: str = str(BASE_DIR / "musics")
+    file_template: str = "%(title)s.%(ext)s"
+    download_retries: int = 4
 
     @property
     def log_file(self) -> str:
         logs_file: str = str(Path(self.logs_path) / f"{self.service_name.lower()}.logs")
         return logs_file
 
+    @property
+    def output_download(self) -> str:
+        return str(Path(self.download_folder) / self.file_template)
+
 
 settings = Settings()  # type: ignore
 
+ydl_opts: "yt_dlp._Params" = {
+    "format": "bestaudio/best",
+    "outtmpl": settings.output_download,  # e.g. 'downloads/%(title)s.%(ext)s'
+    "quiet": False,
+    "no_warnings": True,
+    "continuedl": True,
+    "retries": settings.download_retries,
+    # Optional: force HLS if needed
+    # 'extractor_args': {'soundcloud': {'formats': 'hls'}},
+    # For faster segmented downloads:
+    "concurrent_fragment_downloads": settings.concurrent_fragment_downloads,
+}
 
 # make dir of logs
 logs_path = Path(settings.logs_path)
