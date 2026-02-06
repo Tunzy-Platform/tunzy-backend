@@ -1,9 +1,9 @@
-from app.core.logging import setup_logging
+from app.core.logging import get_logger
 from app.core import config
 import asyncio
 import yt_dlp
 
-logger = setup_logging(__name__)
+logger = get_logger(__name__)
 
 
 def sync_download_ytdl(links: list[str]):

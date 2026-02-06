@@ -2,12 +2,12 @@ import asyncio
 import aiohttp
 from aiohttp import ClientSession
 from app.core import config
-from app.core.logging import setup_logging
+from app.core.logging import get_logger
 
 import re
 import dataclasses
 
-logger = setup_logging(__name__)
+logger = get_logger(__name__)
 
 
 headers = {

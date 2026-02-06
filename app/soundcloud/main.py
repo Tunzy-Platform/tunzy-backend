@@ -1,11 +1,13 @@
 from app.core import config
-from app.core.logging import setup_logging
+from app.core.logging import get_logger, setup_logging
 from app.soundcloud.auth import SoundCloudAuth, get_app_version, get_client_id, headers
 from app.soundcloud.playlist import get_playlists, get_liked_tracks, get_playlist_tracks
 import asyncio
 import aiohttp
 from app.soundcloud.download import download_tracks
-logger = setup_logging(__name__)
+
+setup_logging(__name__)
+logger = get_logger(__name__)
 
 
 async def main():
