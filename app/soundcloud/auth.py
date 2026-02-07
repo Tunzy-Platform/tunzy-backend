@@ -10,20 +10,6 @@ import dataclasses
 logger = get_logger(__name__)
 
 
-headers = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
-    "Accept": "application/json, text/javascript,text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-    "Accept-Encoding": "gzip, deflate, br, zstd",
-    "Referer": "https://www.google.com/",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "authorization": config.settings.soundcloud_oauth,
-}
 
 
 @dataclasses.dataclass
@@ -76,7 +62,7 @@ async def get_client_id(session: ClientSession) -> str:
 async def get_app_version(session: ClientSession) -> str:
     url: str = "https://soundcloud.com/versions.json"
     logger.info("requesting %s", url)
-    async with session.get(url, headers=headers) as req:
+    async with session.get(url) as req:
         html = await req.text()
         json = await req.json()
         logger.info("Versions Page status %d length %d", req.status, len(html))
