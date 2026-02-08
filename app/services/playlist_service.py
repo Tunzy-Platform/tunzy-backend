@@ -16,18 +16,18 @@ from app.soundcloud.playlist import get_playlist, get_playlists, get_playlist_tr
 from urllib.parse import unquote
 from sqlmodel import select, exists, update, or_
 
-router = APIRouter()
+router = APIRouter(prefix="/playlist")
 logger = get_logger(__name__)
 
 
-@router.get("/playlists/", response_model=list[PlaylistPublicModel])
+@router.get("/", response_model=list[PlaylistPublicModel])
 async def playlists(orm: SessionDep):
     statement = select(PlaylistModel)
     items = orm.exec(statement).fetchall()
     return items
 
 
-@router.get("/playlists/{id:int}/", response_model=PlaylistPublicModel)
+@router.get("/{id:int}/", response_model=PlaylistPublicModel)
 async def playlist(id: Annotated[int, Path(title="ID of playlist")], orm: SessionDep):
     playlist_statement = select(PlaylistModel).where(PlaylistModel.id == id)
     playlist_obj = orm.exec(playlist_statement).one_or_none()
@@ -36,14 +36,14 @@ async def playlist(id: Annotated[int, Path(title="ID of playlist")], orm: Sessio
     return playlist_obj
 
 
-@router.get("/playlists/{id:int}/tracks/", response_model=list[TrackPublicModel])
+@router.get("/{id:int}/tracks/", response_model=list[TrackPublicModel])
 async def tracks(id: Annotated[int, Path(title="ID of playlist")], orm: SessionDep):
     tracks_statement = select(TrackModel).where(TrackModel.playlists.any(id=id))
     tracks = orm.exec(tracks_statement).fetchall()
     return tracks
 
 
-@router.post("/playlists/sync/")
+@router.post("/sync/")
 async def sync_playlists(orm: SessionDep):
     async with aiohttp.ClientSession(
         proxy=config.settings.http_proxy,
@@ -88,7 +88,7 @@ async def sync_playlists(orm: SessionDep):
     }
 
 
-@router.post("/playlists/{id}/sync/")
+@router.post("/{id}/sync/")
 async def sync_playlist_tracks(
     id: Annotated[int, Path(title="ID or playlist")], orm: SessionDep
 ):
