@@ -16,7 +16,7 @@ from app.soundcloud.playlist import get_playlist, get_playlists, get_playlist_tr
 from urllib.parse import unquote
 from sqlmodel import select, exists, update, or_
 
-router = APIRouter(prefix="/playlist")
+router = APIRouter(prefix="/playlists")
 logger = get_logger(__name__)
 
 
