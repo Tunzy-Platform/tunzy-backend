@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     download_folder: str = str(BASE_DIR / "musics")
     file_template: str = "%(title)s.%(ext)s"
     download_retries: int = 4
+    sync_interval: int = 30
 
     db_url: str = f"sqlite:///{DB_PATH}"
 

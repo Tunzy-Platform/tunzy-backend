@@ -11,6 +11,7 @@ class SettingBaseModel(SQLModel):
     )
     download_folder: str = Field(default=settings.download_folder)
     download_retries: int = Field(default=settings.download_retries)
+    sync_interval: int = Field(default=settings.sync_interval)
 
 
 class SettingsModel(SettingBaseModel, table=True):
