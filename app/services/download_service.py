@@ -25,9 +25,17 @@ async def downloads_list(orm: SessionDep):
     return items
 
 
-@router.post("/{id}/stop")
-async def stop_download(orm: SessionDep): ...
-
+@router.post("/{id}/cancel/", response_model=DownloadTrackDataModel)
+async def cancel_download(id, orm: SessionDep):
+    query = select(DownloadTrackModel).where(DownloadTrackModel.id == id)
+    item = orm.exec(query).one_or_none()
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Item Not Found"
+        )
+    orm.delete(item)
+    orm.commit()
+    return item
 
 @router.post("/{id}/start")
 async def start_download(orm: SessionDep): ...
