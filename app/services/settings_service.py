@@ -1,4 +1,4 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from fastapi.routing import APIRouter
 from sqlmodel import select
 from app.core.db import SessionDep
@@ -22,7 +22,9 @@ async def get_settings(orm: SessionDep):
 
 
 @router.patch("/", response_model=SettingsPublicModel)
-async def update_settings(settings_data: SettingsUpdateModel, orm: SessionDep):
+async def update_settings(
+    settings_data: SettingsUpdateModel, orm: SessionDep, request: Request
+):
     validated_settings_data = SettingsUpdateModel.model_validate(settings_data)
     query = select(SettingsModel)
     setting = orm.exec(query).one_or_none()
@@ -33,4 +35,9 @@ async def update_settings(settings_data: SettingsUpdateModel, orm: SessionDep):
         setting.sqlmodel_update(validated_settings_data.model_dump())
         orm.add(setting)
     orm.commit()
+
+    await request.app.state.downloader.semaphore.update_limit(
+        setting.concurrent_downloads
+    )
+
     return setting

@@ -6,8 +6,8 @@ import yt_dlp
 logger = get_logger(__name__)
 
 
-def sync_download_ytdl(links: list[str]):
-    with yt_dlp.YoutubeDL(config.ydl_opts) as ydl:
+def sync_download_ytdl(links: list[str], config):
+    with yt_dlp.YoutubeDL(config) as ydl:
         ydl.download(links)
 
 
