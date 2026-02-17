@@ -11,11 +11,9 @@ from app.models.playlist import (
     TrackPublicModel,
 )
 from app.models.settings import SettingsModel
-from app.schemas.playlist import PlaylistSchema
 from app.soundcloud.auth import SoundCloudAuth, get_app_version, get_client_id
-from app.soundcloud.playlist import get_playlist, get_playlists, get_playlist_tracks
-from urllib.parse import unquote
-from sqlmodel import select, exists, update, or_
+from app.soundcloud.playlist import get_playlists, get_playlist_tracks
+from sqlmodel import select, or_
 
 router = APIRouter(prefix="/playlists")
 logger = get_logger(__name__)
