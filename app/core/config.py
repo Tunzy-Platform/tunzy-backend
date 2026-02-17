@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     download_retries: int = 4
     sync_interval: int = 30
     stream_chunk_size: int = 1024 * 1024  # 1 MB in bytes
+    frontend_path: str | None = None
 
     db_url: str = f"sqlite:///{DB_PATH}"
 
