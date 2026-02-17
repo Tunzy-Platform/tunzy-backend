@@ -29,6 +29,7 @@ class DownloadContext:
     progress_reports: dict
     cancel_event: threading.Event
     download_object: DownloadTrackModel
+    file_path: str | None = None
 
 
 class DownloadProgressReport(BaseModel):
@@ -66,6 +67,10 @@ def download_hook(dtl, ctx: DownloadContext):
         dtl.get("status"), DownloadStatusEnum.DOWNLOADING
     )
     progress_reports[download_id] = current_report
+
+    if dtl.get("status") == "finished":
+        ctx.file_path = dtl.get("filename")
+        logger.info("File Path: %s", ctx.file_path)
 
     # percent_str = dtl.get("_percent_str", "??%")  # already formatted
     # pprint(dtl)
@@ -115,8 +120,14 @@ async def download(ctx: DownloadContext, orm: SessionDep):
             )
         )
         ctx.download_object.status = DownloadStatusEnum.SUCCESSFUL
+        ctx.download_object.file_path = ctx.file_path
         orm.add(ctx.download_object)
-        logger.info("Downloading Done %d", ctx.download_object.id)
+
+        logger.info(
+            "Downloading Done %d saved into %s",
+            ctx.download_object.id,
+            ctx.download_object.file_path,
+        )
 
     except asyncio.CancelledError:
         logger.info("Download %d Canceled", ctx.download_object.id)
@@ -139,5 +150,7 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         )
         current_report.status = DownloadStatusEnum.FAILED
         ctx.progress_reports[ctx.download_object.id] = current_report
-
-    orm.commit()
+    try:
+        orm.commit()
+    except Exception as ex:
+        logger.error("Error on Committing %s", ex)
