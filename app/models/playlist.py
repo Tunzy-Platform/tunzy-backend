@@ -112,10 +112,6 @@ class DownloadTrackDataModel(DownloadTrackBaseModel):
     id: int
 
 
-class DownloadTrackPreviewModel(DownloadTrackBaseModel):
-    id: int
-
-
 class TrackPublicModel(TrackBaseModel):
     id: int
-    download: Optional["DownloadTrackPreviewModel"]
+    download: Optional["DownloadTrackDataModel"]
