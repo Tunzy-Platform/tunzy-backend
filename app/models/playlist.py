@@ -78,7 +78,6 @@ class TrackBaseModel(SQLModel):
 
 class TrackModel(TrackBaseModel, table=True):
     id: int | None = Field(primary_key=True, index=True)
-    file_path: str | None = Field()
 
     playlists: list["PlaylistModel"] = Relationship(
         back_populates="tracks", link_model=PlaylistTrackLinkModel
