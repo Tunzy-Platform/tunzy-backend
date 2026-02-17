@@ -1,18 +1,13 @@
 import asyncio
-from dataclasses import dataclass
-import threading
 from fastapi.routing import APIRouter
 from sqlmodel import select
 from app.core import config
 from app.core.db import SessionDep
 from app.core.logging import get_logger
-from app.models.playlist import (
-    DownloadTrackModel,
-    DownloadStatusEnum,
-)
+from app.download_manager.manager import DownloadContext, DownloadProgressReport
+from app.models.playlist import DownloadStatusEnum
 from app.models.settings import SettingsModel
 from app.soundcloud.download import sync_download_ytdl
-from pydantic import BaseModel, ConfigDict
 
 router = APIRouter(prefix="/downloads")
 logger = get_logger(__name__)
@@ -23,19 +18,6 @@ YTDL_STATUS_MAP = {
     "finished": DownloadStatusEnum.SUCCESSFUL,
 }
 
-
-@dataclass
-class DownloadContext:
-    progress_reports: dict
-    cancel_event: threading.Event
-    download_object: DownloadTrackModel
-    file_path: str | None = None
-
-
-class DownloadProgressReport(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    percent: int = 0
-    status: DownloadStatusEnum = DownloadStatusEnum.DOWNLOADING
 
 
 def error_logger(fn):
@@ -60,7 +42,7 @@ def download_hook(dtl, ctx: DownloadContext):
     percent = dtl.get("_percent", 0)
     current_report = progress_reports.get(
         download_id,
-        DownloadProgressReport(),
+        DownloadProgressReport(track_id=ctx.download_object.track_id),
     )
     current_report.percent = max(current_report.percent, int(percent))
     current_report.status = YTDL_STATUS_MAP.get(
@@ -135,7 +117,8 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         orm.add(ctx.download_object)
 
         current_report = ctx.progress_reports.get(
-            ctx.download_object.id, DownloadProgressReport()
+            ctx.download_object.id,
+            DownloadProgressReport(track_id=ctx.download_object.track_id),
         )
         current_report.status = DownloadStatusEnum.FAILED
         ctx.progress_reports[ctx.download_object.id] = current_report
@@ -146,7 +129,8 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         orm.add(ctx.download_object)
 
         current_report = ctx.progress_reports.get(
-            ctx.download_object.id, DownloadProgressReport()
+            ctx.download_object.id,
+            DownloadProgressReport(track_id=ctx.download_object.track_id),
         )
         current_report.status = DownloadStatusEnum.FAILED
         ctx.progress_reports[ctx.download_object.id] = current_report

@@ -1,10 +1,27 @@
 from asyncio import Queue, Condition
 import asyncio
+from dataclasses import dataclass
 import threading
 
 from app.core.logging import get_logger
-
+from app.models.playlist import DownloadStatusEnum, DownloadTrackModel
+from pydantic import BaseModel, ConfigDict
 logger = get_logger(__name__)
+
+
+@dataclass
+class DownloadContext:
+    progress_reports: dict
+    cancel_event: threading.Event
+    download_object: DownloadTrackModel
+    file_path: str | None = None
+
+
+class DownloadProgressReport(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    track_id: int = -1
+    percent: int = 0
+    status: DownloadStatusEnum = DownloadStatusEnum.DOWNLOADING
 
 
 class AdjustableSemaphore:
@@ -38,7 +55,7 @@ class DownloadManager:
         self.semaphore = AdjustableSemaphore(total_concurrent_downloads)
         self.queue = Queue()
         self.tasks: dict[int, tuple[asyncio.Task, threading.Event]] = {}
-        self.progress_reports: dict[int, int] = {}
+        self.progress_reports: dict[int, DownloadProgressReport] = {}
 
     async def worker(self):
         while True:
