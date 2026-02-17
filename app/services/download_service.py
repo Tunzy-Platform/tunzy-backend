@@ -40,7 +40,7 @@ async def downloads_list(orm: SessionDep):
 
 
 @router.post("/{id}/cancel/", response_model=DownloadTrackDataModel)
-async def cancel_download(id, orm: SessionDep, request: Request):
+async def cancel_download(id: int, orm: SessionDep, request: Request):
     query = select(DownloadTrackModel).where(DownloadTrackModel.id == id)
     item = orm.exec(query).one_or_none()
     if not item:
@@ -53,7 +53,33 @@ async def cancel_download(id, orm: SessionDep, request: Request):
     return item
 
 @router.post("/{id}/retry")
-async def retry_download(orm: SessionDep): ...
+async def retry_download(id: int, orm: SessionDep, request: Request):
+    download_track_query = select(DownloadTrackModel).where(DownloadTrackModel.id == id)
+    download_item = orm.exec(download_track_query).one_or_none()
+    if not download_item:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Download Job Not Found"
+        )
+
+    download_item.status = DownloadStatusEnum.DOWNLOADING
+    orm.add(download_item)
+    orm.commit()
+    cancel_event = threading.Event()
+    ctx = soundcloud_downloader.DownloadContext(
+        progress_reports=request.app.state.downloader.progress_reports,
+        progress_event=request.app.state.downloader.progress_event,
+        cancel_event=cancel_event,
+        download_object=download_item,
+    )
+
+    await request.app.state.downloader.add_to_queue(
+        download_item.id,
+        soundcloud_downloader.download(ctx, orm),  # type: ignore
+        cancel_event,
+        -1,
+    )
+
+    return download_item
 
 @router.post(
     "/playlists/tracks/{track_id}",
@@ -85,6 +111,7 @@ async def download_track(track_id: int, orm: SessionDep, request: Request):
     cancel_event = threading.Event()
     ctx = soundcloud_downloader.DownloadContext(
         progress_reports=request.app.state.downloader.progress_reports,
+        progress_event=request.app.state.downloader.progress_event,
         cancel_event=cancel_event,
         download_object=download_item,
     )
@@ -107,16 +134,16 @@ async def download_progress_reports(
     )
 
     async def progress_generator():
-        last_report = {}
         while True:
             if await request.is_disconnected():
                 break
-            progresses = progress_reports.copy()
-            # if last_report == progress_reports:
-            #     continue
 
-            last_report = progresses
+            await request.app.state.downloader.progress_event.wait()
+            request.app.state.downloader.progress_event.clear()
+
+            progresses = progress_reports.copy()
             data = json.dumps(jsonable_encoder(progresses))
+
             yield f"data: {data}\n\n"
             await sleep(0.5)
 
@@ -139,17 +166,17 @@ async def download_playlist_progress_report(
     tracks_ids_lookup = set([obj.id for obj in playlist_obj.tracks])
 
     async def progress_generator():
-        last_progress_reports = None
         while True:
             if await request.is_disconnected():
                 break
-            if last_progress_reports == progress_reports:
-                continue
 
-            last_progress_reports = progress_reports.copy()
+            await request.app.state.downloader.progress_event.wait()
+            request.app.state.downloader.progress_event.clear()
+
+            current = progress_reports.copy()
             playlist_progress = {
                 obj.track_id: obj
-                for obj in last_progress_reports.values()
+                for obj in current.values()
                 if obj.track_id in tracks_ids_lookup
             }
             data = json.dumps(jsonable_encoder(playlist_progress))
