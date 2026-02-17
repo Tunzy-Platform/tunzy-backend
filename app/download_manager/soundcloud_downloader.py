@@ -95,11 +95,19 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         ydl_config["concurrent_fragment_downloads"] = concurrent_fragment_downloads
         ydl_config["proxy"] = http_proxy or None
 
-        await asyncio.create_task(
+        is_successful, exception = await asyncio.create_task(
             asyncio.to_thread(
                 sync_download_ytdl, [ctx.download_object.track.url or ""], ydl_config
             )
         )
+        if not is_successful:
+            if exception:
+                raise Exception(
+                    "Download Failed Inside sync_download_ytdl"
+                ) from exception
+            else:
+                raise Exception("Download Failed Inside sync_download_ytdl")
+
         ctx.download_object.status = DownloadStatusEnum.SUCCESSFUL
         ctx.download_object.file_path = ctx.file_path
         orm.add(ctx.download_object)
@@ -123,7 +131,7 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         ctx.progress_reports[ctx.download_object.id] = current_report
 
     except Exception as err:
-        logger.error("exception when downloading %s", err)
+        logger.error("exception when downloading `%s`", err)
         ctx.download_object.status = DownloadStatusEnum.FAILED
         orm.add(ctx.download_object)
 
@@ -133,7 +141,9 @@ async def download(ctx: DownloadContext, orm: SessionDep):
         )
         current_report.status = DownloadStatusEnum.FAILED
         ctx.progress_reports[ctx.download_object.id] = current_report
+
     try:
         orm.commit()
+        ctx.progress_event.set()
     except Exception as ex:
         logger.error("Error on Committing %s", ex)
