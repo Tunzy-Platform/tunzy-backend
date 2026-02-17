@@ -118,5 +118,4 @@ class DownloadTrackPreviewModel(DownloadTrackBaseModel):
 
 class TrackPublicModel(TrackBaseModel):
     id: int
-    file_path: str | None
     download: Optional["DownloadTrackPreviewModel"]
