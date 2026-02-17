@@ -1,8 +1,9 @@
 import enum
 from typing import Optional
-from pathlib import Path
 from datetime import datetime
+from fastapi import Request
 from sqlmodel import Field, SQLModel, Relationship, UniqueConstraint, Column, Enum
+
 from app.schemas.playlist import PlaylistSchema, TrackSchema
 
 
@@ -84,6 +85,13 @@ class TrackModel(TrackBaseModel, table=True):
     )
     download: Optional["DownloadTrackModel"] = Relationship(back_populates="track")
 
+    def to_public_model(self, request: Request) -> "TrackPublicModel":
+        return TrackPublicModel(
+            **self.model_dump(),
+            download=self.download,  # type: ignore
+            stream_url=str(request.url_for("play-track", track_id=self.id)),
+        )
+
 
 class DownloadStatusEnum(str, enum.Enum):
     PENDING = "pending"
@@ -103,6 +111,7 @@ class DownloadTrackModel(DownloadTrackBaseModel, table=True):
     track: TrackModel = Relationship(back_populates="download")
 
 
+
 class DownloadTrackPublicModel(DownloadTrackBaseModel):
     id: int
     track: TrackModel
@@ -115,3 +124,4 @@ class DownloadTrackDataModel(DownloadTrackBaseModel):
 class TrackPublicModel(TrackBaseModel):
     id: int
     download: Optional["DownloadTrackDataModel"]
+    stream_url: str
