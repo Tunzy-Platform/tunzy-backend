@@ -94,7 +94,7 @@ class DownloadStatusEnum(str, enum.Enum):
 
 class DownloadTrackBaseModel(SQLModel):
     status: DownloadStatusEnum = Field(sa_column=Column(Enum(DownloadStatusEnum)))
-    file_path: Path | None = Field()
+    file_path: str | None = Field()
 
 
 class DownloadTrackModel(DownloadTrackBaseModel, table=True):
