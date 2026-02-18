@@ -163,5 +163,10 @@ headers = {
     "Sec-Fetch-Mode": "navigate",
     "Sec-Fetch-Site": "none",
     "Sec-Fetch-User": "?1",
+    # this data can be override by SettingsModel data
     "authorization": settings.soundcloud_oauth,
+}
+cookies = {
+    # this data can be override by SettingsModel data
+    "oauth_token": settings.soundcloud_oauth.lstrip("OAuth "),
 }
