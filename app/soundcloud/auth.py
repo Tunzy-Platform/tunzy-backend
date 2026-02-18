@@ -18,8 +18,12 @@ class SoundCloudAuth:
     client_id: str
     oauth: str = config.settings.soundcloud_oauth
     # third section of the OAuth is the user ID
-    user_id: str = config.settings.soundcloud_oauth.split("-")[2]
-
+    @property
+    def user_id(self) -> str:
+        oauth_parts = config.settings.soundcloud_oauth.split("-")
+        if len(oauth_parts) < 2:
+            return ""
+        return oauth_parts[2]
 
 async def get_client_id(session: ClientSession) -> str:
 

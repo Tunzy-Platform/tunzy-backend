@@ -53,7 +53,13 @@ async def sync_playlists(orm: SessionDep):
     async with ClientSession(settings=settings) as session:
         client_id = await get_client_id(session)
         app_version = await get_app_version(session)
-        sc_auth = SoundCloudAuth(client_id, app_version)
+        sc_auth = SoundCloudAuth(
+            client_id,
+            app_version,
+            oauth=settings.get_soundcloud_oauth()
+            if settings
+            else config.settings.soundcloud_oauth,
+        )
         res = await get_playlists(session, sc_auth)
 
     items_id = [obj.platform_id for obj in res]
@@ -109,7 +115,13 @@ async def sync_playlist_tracks(
     async with ClientSession(settings=settings) as session:
         client_id = await get_client_id(session)
         app_version = await get_app_version(session)
-        sc_auth = SoundCloudAuth(client_id, app_version)
+        sc_auth = SoundCloudAuth(
+            client_id,
+            app_version,
+            oauth=settings.get_soundcloud_oauth()
+            if settings
+            else config.settings.soundcloud_oauth,
+        )
         res = await get_playlist_tracks(playlist_obj.url, session, sc_auth)
 
     created_tracks = []
