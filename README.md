@@ -1,2 +1,2 @@
-Tunzy
-a tool to sync your local with your SoundCloud account
+Tunzy – Your SoundCloud, Supercharged.
+Sync your playlists, likes, and tracks instantly. Listen offline, play directly from your own server, and never miss a beat. All your music. Always updated. Fully yours.
