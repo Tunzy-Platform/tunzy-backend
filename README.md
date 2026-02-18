@@ -1,2 +1,2 @@
-SoundCloud Sync Me
+Tunzy
 a tool to sync your local with your SoundCloud account

@@ -13,3 +13,5 @@ wheels/
 logs/
 *.db
 .git
+.ruff_cache
+musics
