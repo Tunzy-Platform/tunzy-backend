@@ -26,9 +26,7 @@ logger = get_logger(__name__)
 async def downloads_list(orm: SessionDep):
     query = (
         select(DownloadTrackModel)
-        .where(
-            # DownloadTrackModel.status.not_in([DownloadStatusEnum.SUCCESSFUL])
-        )
+        .where(DownloadTrackModel.status.not_in([DownloadStatusEnum.SUCCESSFUL]))  # type: ignore
         .order_by(DownloadTrackModel.status)
     )
     items = orm.exec(query).fetchall()
