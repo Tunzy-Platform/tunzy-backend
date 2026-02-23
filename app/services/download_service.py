@@ -1,4 +1,5 @@
 from asyncio import sleep
+import asyncio
 import json
 import threading
 from fastapi import HTTPException, Request, status
@@ -192,5 +193,65 @@ async def download_playlist_progress_report(
     )
 
 
-@router.post("/playlists/{id}/tracks")
-async def download_playlist(orm: SessionDep): ...
+@router.post("/playlists/{playlist_id}/tracks", response_model=list[DownloadTrackModel])
+async def download_playlist(playlist_id: int, orm: SessionDep, request: Request):
+    playlist_qs = select(PlaylistModel).where(PlaylistModel.id == playlist_id)
+    playlist_obj = orm.exec(playlist_qs).one_or_none()
+    if not playlist_obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Playlist Not Found"
+        )
+    tracks_id = [obj.id for obj in playlist_obj.tracks]
+
+    tracks_in_download_modes_qs = select(DownloadTrackModel).where(
+        DownloadTrackModel.track_id.in_(tracks_id),  # type: ignore
+    )
+    tracks_in_download_modes = orm.exec(tracks_in_download_modes_qs).fetchall()
+    tracks_in_download_modes_lookup = {
+        track.track_id for track in tracks_in_download_modes
+    }
+    logger.info("Start Adding Tracks To Download List")
+    download_items: list[DownloadTrackModel] = []
+    for track in playlist_obj.tracks:
+        if track.id in tracks_in_download_modes_lookup:
+            continue
+
+        download_item = DownloadTrackModel(
+            status=DownloadStatusEnum.PENDING,
+            track_id=track.id or 0,
+            file_path=None,
+        )
+        orm.add(download_item)
+        download_items.append(download_item)
+    orm.commit()
+    [orm.refresh(obj) for obj in download_items]
+
+    logger.info(
+        "Start Adding Tracks To Download List Ended With %d Total Items",
+        len(download_items),
+    )
+    logger.info("Start Adding Downloads Items To Download Queue")
+    download_tasks = []
+    for download in download_items:
+        cancel_event = threading.Event()
+        ctx = soundcloud_downloader.DownloadContext(
+            progress_reports=request.app.state.downloader.progress_reports,
+            progress_event=request.app.state.downloader.progress_event,
+            cancel_event=cancel_event,
+            download_object=download,
+        )
+
+        task = asyncio.create_task(
+            request.app.state.downloader.add_to_queue(
+                download.id,
+                soundcloud_downloader.download(ctx, orm),  # type: ignore
+                cancel_event,
+                -1,
+            )
+        )
+        download_tasks.append(task)
+
+    await asyncio.gather(*download_tasks)
+    logger.info("Start Adding Downloads Items To Download Queue Ended")
+
+    return download_items
