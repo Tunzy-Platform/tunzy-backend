@@ -55,10 +55,10 @@ async def get_playlists(
                     duration=playlist.get("duration", 0),
                     is_synced=False,
                     last_modified=playlist.get("last_modified", datetime.now()),
-                    name=playlist.get("title", "Unknown"),
+                    name=playlist.get("title", "SoundCloud"),
                     owner=playlist.get("user", {}).get("full_name", None)
                     or user
-                    or "Unknown",
+                    or "SoundCloud",
                     track_count=playlist.get("track_count", 0)
                     or len(playlist.get("tracks", [])),
                     url=playlist.get("permalink_url", ""),
@@ -107,8 +107,10 @@ async def get_playlist(
             duration=playlist.get("duration", 0),
             is_synced=False,
             last_modified=playlist.get("last_modified", datetime.now()),
-            name=playlist.get("title", "Unknown"),
-            owner=playlist.get("user", {}).get("full_name", None) or user or "Unknown",
+            name=playlist.get("title", "SoundCloud"),
+            owner=playlist.get("user", {}).get("full_name", None)
+            or user
+            or "SoundCloud",
             track_count=playlist.get("track_count", 0) or len(tracks),
             url=playlist.get("permalink_url", ""),
             thumbnail=playlist.get("artwork_url") or first_track_thumbnail,
@@ -228,7 +230,7 @@ async def get_playlist_tracks(
         obj = TrackSchema(
             platform_id=str(data.get("id", 0)),
             url=data.get("permalink_url"),
-            name=data.get("title", "Unknown"),
+            name=data.get("title", "SoundCloud"),
             artist_name=data.get("user", {}).get("full_name"),
             album=None,
             duration=data.get("duration", 0),

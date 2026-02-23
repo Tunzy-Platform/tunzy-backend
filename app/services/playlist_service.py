@@ -1,4 +1,3 @@
-import aiohttp
 from fastapi import APIRouter, Path, HTTPException, Request, status
 from typing import Annotated
 from app.core import config
