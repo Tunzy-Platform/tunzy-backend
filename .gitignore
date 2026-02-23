@@ -14,3 +14,4 @@ wheels/
 logs/
 *.db
 .ruff_cache
+musics
