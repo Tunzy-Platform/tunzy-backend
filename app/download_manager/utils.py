@@ -35,11 +35,11 @@ async def add_downloads_to_download_manager(
             progress_reports=download_manager.progress_reports,
             progress_event=download_manager.progress_event,
             cancel_event=threading.Event(),
-            download_object=download,
+            download_track_id=download.id or 0,
         )
         await download_manager.add_to_queue(
             download.id or -1,
-            soundcloud_downloader.download(ctx, orm),  # type: ignore
+            soundcloud_downloader.download(ctx),  # type: ignore
             ctx.cancel_event,
             -1,
         )

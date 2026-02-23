@@ -15,7 +15,7 @@ class DownloadContext:
     progress_reports: dict
     cancel_event: threading.Event
     progress_event: asyncio.Event
-    download_object: DownloadTrackModel
+    download_track_id: int
     file_path: str | None = None
 
 
@@ -86,9 +86,11 @@ class DownloadManager:
         self,
         download_id: int,
         download_task: CoroutineType,
-        cancel_event: threading.Event,
-        priority: int,
+        cancel_event: threading.Event | None,
+        priority: int = 0,
     ):
+        if not cancel_event:
+            cancel_event = threading.Event()
         await self.queue.put((download_id, download_task, cancel_event, priority))
 
     async def cancel_download(self, download_id):

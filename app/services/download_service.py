@@ -68,12 +68,12 @@ async def retry_download(id: int, orm: SessionDep, request: Request):
         progress_reports=request.app.state.downloader.progress_reports,
         progress_event=request.app.state.downloader.progress_event,
         cancel_event=cancel_event,
-        download_object=download_item,
+        download_track_id=download_item.id or 0,
     )
 
     await request.app.state.downloader.add_to_queue(
         download_item.id,
-        soundcloud_downloader.download(ctx, orm),  # type: ignore
+        soundcloud_downloader.download(ctx),  # type: ignore
         cancel_event,
         -1,
     )
@@ -112,12 +112,12 @@ async def download_track(track_id: int, orm: SessionDep, request: Request):
         progress_reports=request.app.state.downloader.progress_reports,
         progress_event=request.app.state.downloader.progress_event,
         cancel_event=cancel_event,
-        download_object=download_item,
+        download_track_id=download_item.id or 0,
     )
 
     await request.app.state.downloader.add_to_queue(
         download_item.id,
-        soundcloud_downloader.download(ctx, orm),  # type: ignore
+        soundcloud_downloader.download(ctx),  # type: ignore
         cancel_event,
         -1,
     )
@@ -224,7 +224,6 @@ async def download_playlist(playlist_id: int, orm: SessionDep, request: Request)
         orm.add(download_item)
         download_items.append(download_item)
     orm.commit()
-    [orm.refresh(obj) for obj in download_items]
 
     logger.info(
         "Start Adding Tracks To Download List Ended With %d Total Items",
@@ -238,13 +237,13 @@ async def download_playlist(playlist_id: int, orm: SessionDep, request: Request)
             progress_reports=request.app.state.downloader.progress_reports,
             progress_event=request.app.state.downloader.progress_event,
             cancel_event=cancel_event,
-            download_object=download,
+            download_track_id=download.id or 0,
         )
 
         task = asyncio.create_task(
             request.app.state.downloader.add_to_queue(
                 download.id,
-                soundcloud_downloader.download(ctx, orm),  # type: ignore
+                soundcloud_downloader.download(ctx),  # type: ignore
                 cancel_event,
                 -1,
             )
