@@ -1,4 +1,5 @@
 import asyncio
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import select
 from app.core import config
 from app.core.logging import setup_logging
@@ -36,6 +37,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 origins = [
     "http://localhost",

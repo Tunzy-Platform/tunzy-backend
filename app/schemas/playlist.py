@@ -14,6 +14,7 @@ class PlaylistSchema(BaseModel):
     thumbnail: str | None
     is_synced: bool
     last_modified: datetime
+    service: str
 
 class TrackSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)

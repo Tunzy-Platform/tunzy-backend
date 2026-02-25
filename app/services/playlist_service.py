@@ -12,7 +12,13 @@ from app.models.playlist import (
 )
 from app.models.settings import SettingsModel
 from app.soundcloud.auth import SoundCloudAuth, get_app_version, get_client_id
-from app.soundcloud.playlist import get_playlists, get_playlist_tracks
+from app.soundcloud.playlist import (
+    get_liked_playlist,
+    get_liked_tracks,
+    get_playlists,
+    get_playlist_tracks,
+    get_unassigned_tracks_playlist,
+)
 from sqlmodel import select, or_
 
 router = APIRouter(prefix="/playlists")
@@ -45,7 +51,7 @@ async def tracks(
 
 
 @router.post("/sync/")
-async def sync_playlists(orm: SessionDep):
+async def sync_playlists(orm: SessionDep, request: Request):
 
     settings_query = select(SettingsModel)
     settings = orm.exec(settings_query).one_or_none()
@@ -60,9 +66,12 @@ async def sync_playlists(orm: SessionDep):
             else config.settings.soundcloud_oauth,
         )
         res = await get_playlists(session, sc_auth)
-
+        liked_playlist = await get_liked_playlist(request, session, sc_auth)
+        res.append(liked_playlist)
+    # TODO: add order field to show custom playlist on on top
+    res = filter(bool, res)
     items_id = [obj.platform_id for obj in res]
-    logger.info("palylists ids: %s", items_id)
+    logger.info("playlists ids: %s", items_id)
 
     search_query = (
         select(PlaylistModel)
@@ -77,6 +86,8 @@ async def sync_playlists(orm: SessionDep):
 
     for obj in res:
         item = lookup_objs.get(str(obj.platform_id))
+        if obj.platform_id == "soundcloud-likes":
+            logger.info("Likes %s", item)
         if item:
             item.update_from_schema(obj)
             updated_items.append(item)
@@ -86,12 +97,26 @@ async def sync_playlists(orm: SessionDep):
             orm.add(new_item)
             created_items.append(new_item)
 
+    # Handle Custom Playlists
+    unassigned_tracks = await get_unassigned_tracks_playlist(request, orm)
+    search_query = (
+        select(PlaylistModel)
+        .where(PlaylistModel.service == unassigned_tracks.service)
+        .where(PlaylistModel.platform_id == unassigned_tracks.platform_id)  # type: ignore
+    )
+    search_result = orm.exec(search_query).one_or_none()
+    if search_result:
+        search_result.update_from_schema(unassigned_tracks)
+    else:
+        new_playlist = PlaylistModel.from_schema(unassigned_tracks)
+        orm.add(new_playlist)
+
     orm.commit()
 
     return {
-        "updated_playlists": len(updated_items),
-        "created_playlists": len(created_items),
-        "total": len(res),
+        "updated_playlists": len([]),
+        "created_playlists": len([]),
+        "total": len([]),
     }
 
 
@@ -121,7 +146,10 @@ async def sync_playlist_tracks(
             if settings
             else config.settings.soundcloud_oauth,
         )
-        res = await get_playlist_tracks(playlist_obj.url, session, sc_auth)
+        if playlist_obj.platform_id == "soundcloud-likes":
+            res = await get_liked_tracks(session, sc_auth)
+        else:
+            res = await get_playlist_tracks(playlist_obj.url or "", session, sc_auth)
 
     created_tracks = []
     updated_tracks = []
