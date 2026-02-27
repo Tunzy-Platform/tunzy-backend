@@ -4,7 +4,11 @@ from sqlmodel import select
 from app.core import config
 from app.core.db import SessionDep, get_session
 from app.core.logging import get_logger
-from app.download_manager.manager import DownloadContext, DownloadProgressReport
+from app.download_manager.manager import (
+    DownloadContext,
+    DownloadProgressReport,
+    update_progress_reports,
+)
 from app.models.playlist import DownloadStatusEnum, DownloadTrackModel
 from app.models.settings import SettingsModel
 from app.soundcloud.download import sync_download_ytdl
@@ -34,24 +38,22 @@ def error_logger(fn):
 
 
 @error_logger
-def download_hook(dtl, track_id: int, ctx: DownloadContext):
+def download_hook(dtl, download_id: int, track_id: int, ctx: DownloadContext):
     progress_reports: dict[int, DownloadProgressReport] = ctx.progress_reports
-    download_id = track_id
 
     if ctx.cancel_event.is_set():
         logger.info("Downloading Thread Is Canceled")
         raise asyncio.CancelledError()
 
-    percent = dtl.get("_percent", 0)
-    current_report = progress_reports.get(
-        download_id,
-        DownloadProgressReport(track_id=track_id),
+    percent = int(dtl.get("_percent", 0))
+    status = YTDL_STATUS_MAP.get(dtl.get("status"), DownloadStatusEnum.DOWNLOADING)
+    update_progress_reports(
+        progress_reports=progress_reports,
+        download_id=download_id,
+        track_id=track_id,
+        percent=percent,
+        status=status,
     )
-    current_report.percent = max(current_report.percent, int(percent))
-    current_report.status = YTDL_STATUS_MAP.get(
-        dtl.get("status"), DownloadStatusEnum.DOWNLOADING
-    )
-    progress_reports[download_id] = current_report
 
     if dtl.get("status") == "finished":
         ctx.file_path = dtl.get("filename")
@@ -108,7 +110,12 @@ async def download(ctx: DownloadContext, orm: SessionDep | None = None):
     try:
         ydl_config = config.ydl_opts.copy()
         ydl_config["progress_hooks"] = [
-            lambda d: download_hook(d, download_object.track_id, ctx)
+            lambda dtl: download_hook(
+                dtl=dtl,
+                download_id=download_object.id or 0,
+                track_id=download_object.track_id,
+                ctx=ctx,
+            )
         ]
         ydl_config["logger"] = YtdlLogger()  # type: ignore
         ydl_config["concurrent_fragment_downloads"] = concurrent_fragment_downloads
@@ -132,6 +139,12 @@ async def download(ctx: DownloadContext, orm: SessionDep | None = None):
             total_retry += 1
 
         if not is_successful:
+            update_progress_reports(
+                progress_reports=ctx.progress_reports,
+                download_id=ctx.download_track_id,
+                track_id=download_object.track_id,
+                status=DownloadStatusEnum.FAILED,
+            )
             if exception:
                 raise Exception(
                     "Download Failed Inside sync_download_ytdl"
@@ -139,6 +152,12 @@ async def download(ctx: DownloadContext, orm: SessionDep | None = None):
             else:
                 raise Exception("Download Failed Inside sync_download_ytdl")
 
+        update_progress_reports(
+            progress_reports=ctx.progress_reports,
+            download_id=ctx.download_track_id,
+            track_id=download_object.track_id,
+            status=DownloadStatusEnum.SUCCESSFUL,
+        )
         download_object.status = DownloadStatusEnum.SUCCESSFUL
         download_object.file_path = ctx.file_path
         orm.add(download_object)
@@ -160,6 +179,12 @@ async def download(ctx: DownloadContext, orm: SessionDep | None = None):
         )
         current_report.status = DownloadStatusEnum.FAILED
         ctx.progress_reports[download_object.id] = current_report
+        update_progress_reports(
+            progress_reports=ctx.progress_reports,
+            download_id=ctx.download_track_id,
+            track_id=download_object.track_id,
+            status=DownloadStatusEnum.FAILED,
+        )
 
     except Exception as err:
         logger.error("exception when downloading `%s`", err, exc_info=True)
@@ -172,6 +197,12 @@ async def download(ctx: DownloadContext, orm: SessionDep | None = None):
         )
         current_report.status = DownloadStatusEnum.FAILED
         ctx.progress_reports[download_object.id] = current_report
+        update_progress_reports(
+            progress_reports=ctx.progress_reports,
+            download_id=ctx.download_track_id,
+            track_id=download_object.track_id,
+            status=DownloadStatusEnum.FAILED,
+        )
 
     try:
         orm.commit()

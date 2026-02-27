@@ -5,7 +5,7 @@ import threading
 from types import CoroutineType
 
 from app.core.logging import get_logger
-from app.models.playlist import DownloadStatusEnum, DownloadTrackModel
+from app.models.playlist import DownloadStatusEnum
 from pydantic import BaseModel, ConfigDict
 logger = get_logger(__name__)
 
@@ -24,6 +24,24 @@ class DownloadProgressReport(BaseModel):
     track_id: int = -1
     percent: int = 0
     status: DownloadStatusEnum = DownloadStatusEnum.DOWNLOADING
+
+
+def update_progress_reports(
+    progress_reports: dict[int, DownloadProgressReport],
+    download_id,
+    track_id: int,
+    percent: int = 0,
+    status: DownloadStatusEnum | None = None,
+):
+
+    current_report = progress_reports.get(
+        download_id,
+        DownloadProgressReport(track_id=track_id),
+    )
+    current_report.percent = max(current_report.percent, int(percent))
+    if status:
+        current_report.status = status
+    progress_reports[download_id] = current_report
 
 
 class AdjustableSemaphore:
